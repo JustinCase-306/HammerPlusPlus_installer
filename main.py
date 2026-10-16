@@ -6,49 +6,52 @@ from colorama import init, Fore
 
 init(autoreset=True)
 
-# files to delete, input folder path
 bin_delete = ["hammerplusplus.exe", "hlmvplusplus.dll", "hlmvplusplus.exe"]
-bin_folder = Path(input(Fore.LIGHTYELLOW_EX + "Please paste your Portal 2's bin folder path here: ").strip('"'))
+bin_folder = Path(input(Fore.LIGHTYELLOW_EX + "Please paste your game's bin folder path here: ").strip('"'))
 
-print(Fore.LIGHTYELLOW_EX + "Cleaning up old files...")
+print(Fore.LIGHTYELLOW_EX + "\nCleaning up old files...")
 
-# clean old files
 for file in bin_delete:
     full_path = bin_folder / file
     if full_path.exists():
         full_path.unlink()
-        print(Fore.LIGHTYELLOW_EX + "\nFile deleted: " + file)
-    else:
-        print(Fore.LIGHTRED_EX + "\nError: File not found or invalid path: " + file)
+        print(Fore.LIGHTYELLOW_EX + "File deleted: " + file)
 
+print(Fore.LIGHTGREEN_EX + "Successfully cleaned up old files. Continue...")
 
-print(Fore.LIGHTYELLOW_EX + "\nSuccessfully cleaned up old files. Continue...")
+zip_file = Path(
+    input(Fore.LIGHTYELLOW_EX + "\nPlease paste your hammerplusplus_[game]_build[...] .zip path here: ").strip('"'))
 
-# zip file path
-zip_file = Path(input(Fore.LIGHTYELLOW_EX + "\nPlease paste your hammerplusplus_portal2_build[...] .zip path here: ").strip('"'))
+temp_extract_folder = bin_folder / "hplusplus_temp_extract"
 
-# extract zip file
+print(Fore.LIGHTYELLOW_EX + "\nExtracting zip file...")
 with zipfile.ZipFile(zip_file, "r") as zip_archive:
-    zip_archive.extractall(bin_folder)
-    build = zip_archive.namelist()[0]
-    print(Fore.LIGHTYELLOW_EX + "\nSuccessfully extracted zip file in bin folder: " + str(zip_file))
+    zip_archive.extractall(temp_extract_folder)
 
-# move all files to the bin folder
-hammer_build = Path(build).parts[0]
-hammer_bin_folder = bin_folder / hammer_build / hammer_build / "bin"
+extracted_root = next(temp_extract_folder.iterdir())
+hammer_bin_folder = extracted_root / "bin"
 
-for file in hammer_bin_folder.iterdir():
-    if file.is_file():
-        shutil.move(file, bin_folder)
-    elif file.is_dir():
-        if not (bin_folder / file.name).exists():
-            shutil.move(file, bin_folder)
-        else: print(Fore.LIGHTRED_EX + "\nError: hammerplusplus already exists. Continue...")
-    else:
-        print(Fore.LIGHTRED_EX + "\nError: please check your .zip archive or try re-downloading it.")
+if not hammer_bin_folder.exists():
+    hammer_bin_folder = extracted_root
 
+print(Fore.LIGHTYELLOW_EX + "Moving files to your game's bin folder...")
 
-print(Fore.LIGHTYELLOW_EX + "\nSuccessfully moved files.")
+for item in hammer_bin_folder.iterdir():
+    dest_path = bin_folder / item.name
 
+    if item.is_file():
+        shutil.move(str(item), str(dest_path))
+    elif item.is_dir():
+        if dest_path.exists():
+            for sub_item in item.iterdir():
+                sub_dest = dest_path / sub_item.name
+                if sub_item.is_file():
+                    shutil.move(str(sub_item), str(sub_dest))
+                elif sub_item.is_dir():
+                    shutil.copytree(str(sub_item), str(sub_dest), dirs_exist_ok=True)
+        else:
+            shutil.move(str(item), str(dest_path))
 
+shutil.rmtree(temp_extract_folder)
 
+print(Fore.LIGHTGREEN_EX + "\nSuccessfully moved files and cleaned up!")
